@@ -4,14 +4,14 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { ModalContentContainer, StyledContainer } from "./CalendarView.styles";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { useRef, useState } from "react";
-import { Checkbox, Dialog, InputPresets } from "./UI";
+import { Checkbox, Dialog, InputPresets } from "../UI";
 import DatePicker from "react-datepicker";
 
 import "react-datepicker/dist/react-datepicker.css";
-import { SingleSelect } from "./UI/Select";
-import { useForm } from "../hooks/useForm";
-import { Event } from "../types/app.types";
-import { useResponsiveMap } from "../hooks/useResponsiveManager";
+import { SingleSelect } from "../UI/Select";
+import { useForm } from "../../hooks/useForm";
+import { Event } from "../../types/app.types";
+import { useResponsiveMap } from "../../hooks/useResponsiveManager";
 
 interface CalendarViewProps {
   onLogout?: () => void;
