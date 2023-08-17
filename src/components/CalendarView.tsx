@@ -13,7 +13,11 @@ import { useForm } from "../hooks/useForm";
 import { Event } from "../types/app.types";
 import { useResponsiveMap } from "../hooks/useResponsiveManager";
 
-export const CalendarView = () => {
+interface CalendarViewProps {
+  onLogout?: () => void;
+}
+
+export const CalendarView = ({ onLogout }: CalendarViewProps) => {
   const { isDesktop, isPhone } = useResponsiveMap();
   const [events, setEvents] = useState<Event[]>([
     {
@@ -279,7 +283,7 @@ export const CalendarView = () => {
         <h1 className="HEADER__Title">HD Padel - IVAN</h1>
         <button
           className="HEADER__Button"
-          onClick={() => console.log("cerrarseions")}
+          onClick={onLogout}
         >
           Cerrar sesión
         </button>
