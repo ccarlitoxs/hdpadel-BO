@@ -1,4 +1,8 @@
-import { EventClickArg, EventContentArg } from "@fullcalendar/core/index.js";
+import {
+  DatesSetArg,
+  EventClickArg,
+  EventContentArg,
+} from "@fullcalendar/core/index.js";
 import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { ModalContentContainer, StyledContainer } from "./CalendarView.styles";
@@ -12,24 +16,27 @@ import { SingleSelect } from "../UI/Select";
 import { useForm } from "../../hooks/useForm";
 import { Event } from "../../types/app.types";
 import { useResponsiveMap } from "../../hooks/useResponsiveManager";
+import { DateTime } from "luxon";
 
 interface CalendarViewProps {
   onLogout?: () => void;
+  events?: Event[];
+  onDeleteEvent?: (id: string, deleteEventSerie?: boolean) => void;
+  onSaveEvent?: (event: Event) => Promise<void>;
+  onDatesSet?: (dateInfo: DatesSetArg) => void;
+  fixedEvents?: Event[];
+  initialDate?: Date | null;
 }
 
-export const CalendarView = ({ onLogout }: CalendarViewProps) => {
+export const CalendarView = ({
+  events,
+  onDeleteEvent,
+  onSaveEvent,
+  onLogout,
+  onDatesSet,
+  initialDate,
+}: CalendarViewProps) => {
   const { isDesktop, isPhone } = useResponsiveMap();
-  const [events, setEvents] = useState<Event[]>([
-    {
-      id: "1",
-      title: "ivan",
-      start: new Date("2023-08-17T13:30:00"),
-      end: new Date("2023-08-17T14:00:00"),
-      court: "1",
-      status: "confirmed",
-      isFixedEvent: false,
-    },
-  ]);
 
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -39,28 +46,36 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
     court: "",
     isFixedEvent: false,
     isConfirmed: false,
+    fixedEventId: "",
   });
 
-  const [formErrors, setFormErrors] = useState<Record<string, boolean>>({
+  const formErrorsInitialState = {
     owner: false,
     court: false,
     startDate: false,
     endDate: false,
-  });
+  };
 
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [EndDate, setEndDate] = useState<Date | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, boolean>>(
+    formErrorsInitialState
+  );
+
+  const [dateRange, setDateRange] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>({ start: null, end: null });
 
   const [ShowModal, setShowModal] = useState<boolean>(false);
   const [isEditingEvent, setIsEditingEvent] = useState<boolean>(false);
+  const [isCreatingEvent, setIsCreatingEvent] = useState<boolean>(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDateClick = (arg: DateClickArg) => {
-    setStartDate(arg.date);
     const endDate = new Date(arg.date);
     endDate.setMinutes(endDate.getMinutes() + 60);
-    setEndDate(endDate);
+    setDateRange({ start: arg.date, end: endDate });
     setShowModal(true);
+    setIsCreatingEvent(true);
   };
 
   const handleClickEvent = (arg: EventClickArg) => {
@@ -70,9 +85,9 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
       court: arg.event.extendedProps.court,
       isFixedEvent: arg.event.extendedProps.isFixedEvent,
       isConfirmed: arg.event.extendedProps.status === "confirmed",
+      fixedEventId: arg.event.extendedProps.fixedEventId,
     });
-    setStartDate(arg.event.start);
-    setEndDate(arg.event.end);
+    setDateRange({ start: arg.event.start, end: arg.event.end });
     setIsEditingEvent(true);
     setShowModal(true);
   };
@@ -88,72 +103,81 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
     }
   };
 
-  const handleDeleteEvent = () => {
-    console.log(form);
-    setEvents((prev) => prev.filter((event) => event.id !== form.id));
+  const handleDeleteEvent = (deleteSerie?: boolean) => {
+    onDeleteEvent?.(form.id, deleteSerie);
     reset();
-    setStartDate(null);
-    setEndDate(null);
+    setDateRange({ start: null, end: null });
     setShowModal(false);
     setIsEditingEvent(false);
+    setIsCreatingEvent(false);
   };
 
   const handleCloseEvent = () => {
     reset();
-    setStartDate(null);
-    setEndDate(null);
+    setDateRange({ start: null, end: null });
     setShowModal(false);
+    setIsEditingEvent(false);
+    setIsCreatingEvent(false);
+  };
+
+  const onCreateOtherEvent = () => {
+    reset();
+    setIsCreatingEvent(true);
     setIsEditingEvent(false);
   };
 
-  const handleSaveEvent = () => {
-    console.log("save", form, startDate, EndDate);
-    if (form?.court === "" || form?.owner === "" || !startDate || !EndDate) {
+  const handleSaveEvent = async () => {
+    if (
+      form?.court === "" ||
+      form?.owner === "" ||
+      !dateRange.start ||
+      !dateRange.end
+    ) {
       setFormErrors({
         court: form?.court === "",
         owner: form?.owner === "",
-        startDate: !startDate,
-        endDate: !EndDate,
+        startDate: !dateRange.start,
+        endDate: !dateRange.end,
       });
       return;
     }
-    if (isEditingEvent) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setEvents((prev) =>
-        prev.map((event) =>
-          event.id === form.id
-            ? {
-                id: form.id,
-                title: form.owner,
-                start: startDate,
-                end: EndDate,
-                court: form.court,
-                status: form.isConfirmed ? "confirmed" : "pending",
-                isFixedEvent: form.isFixedEvent,
-              }
-            : event
-        )
-      );
-    } else {
-      setEvents((prev) => [
-        ...prev,
-        {
-          id: (prev.length + 1).toString(),
-          title: form.owner,
-          start: startDate,
-          end: EndDate,
-          court: form.court,
-          status: form.isConfirmed ? "confirmed" : "pending",
-          isFixedEvent: form.isFixedEvent,
-        },
-      ]);
+
+    if (
+      DateTime.fromJSDate(dateRange.end) <=
+        DateTime.fromJSDate(dateRange.start) ||
+      (DateTime.fromJSDate(dateRange.end).hasSame(
+        DateTime.fromJSDate(dateRange.start),
+        "hour"
+      ) &&
+        DateTime.fromJSDate(dateRange.end).hasSame(
+          DateTime.fromJSDate(dateRange.start),
+          "minute"
+        ))
+    ) {
+      setFormErrors({
+        startDate: true,
+        endDate: true,
+      });
+      return;
     }
 
+    await onSaveEvent?.({
+      id: isEditingEvent ? form.id : undefined,
+      title: form.owner,
+      start: dateRange.start,
+      end: dateRange.end,
+      court: form.court,
+      status: form.isConfirmed ? "confirmed" : "pending",
+      isFixedEvent: form.isFixedEvent,
+      fixedEventId: form.fixedEventId,
+    });
+
+    setFormErrors(formErrorsInitialState);
     reset();
-    setStartDate(null);
-    setEndDate(null);
+    setDateRange({ start: null, end: null });
     setShowModal(false);
     setIsEditingEvent(false);
+    setIsCreatingEvent(false);
   };
 
   return (
@@ -165,7 +189,8 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
       >
         <ModalContentContainer>
           <h2 className="MODAL__Title">
-            {isEditingEvent ? "Editar" : "Crear"} Turno
+            {isEditingEvent ? "Editar" : "Crear"} Turno{" "}
+            {form.isFixedEvent || form.fixedEventId ? "Fijo" : ""}
           </h2>
           <SingleSelect
             className="MODAL__Input-Select"
@@ -193,18 +218,19 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
             value={form.owner}
           />
           <DatePicker
-            selected={startDate}
-            onChange={(date) => setStartDate(date)}
+            selected={dateRange.start}
+            onChange={(date) => setDateRange({ ...dateRange, start: date })}
             showTimeSelect
             showTimeSelectOnly
             timeIntervals={30}
             timeCaption="Hora"
             dateFormat="h:mm aa"
-            isClearable
             showPopperArrow={false}
             placeholderText="Hora de inicio"
             popperClassName="MODAL__DatePicker-Popper"
             calendarClassName="MODAL__DatePicker"
+            isClearable={!form.fixedEventId}
+            disabled={!!form.fixedEventId}
             customInput={
               <InputPresets.TextInput
                 containerProps={{
@@ -217,18 +243,19 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
             }
           />
           <DatePicker
-            selected={EndDate}
-            onChange={(date) => setEndDate(date)}
+            selected={dateRange.end}
+            onChange={(date) => setDateRange({ ...dateRange, end: date })}
             showTimeSelect
             showTimeSelectOnly
             timeIntervals={30}
             timeCaption="Hora"
             dateFormat="h:mm aa"
-            isClearable
             showPopperArrow={false}
             placeholderText="Hora final"
             popperClassName="MODAL__DatePicker-Popper"
             calendarClassName="MODAL__DatePicker"
+            isClearable={!form.fixedEventId}
+            disabled={!!form.fixedEventId}
             customInput={
               <InputPresets.TextInput
                 containerProps={{
@@ -241,36 +268,43 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
             }
           />
           <div className="MODAL__Checkboxes">
-            <Checkbox
-              label="Esta confirmado"
-              onChange={(event) =>
-                onChange(event.target.checked, "isConfirmed")
-              }
-              checked={form.isConfirmed}
-            />
-            <Checkbox
-              label="Es turno fijo"
-              onChange={(event) =>
-                onChange(event.target.checked, "isFixedEvent")
-              }
-              checked={form.isFixedEvent}
-            />
+            {!isCreatingEvent && (
+              <Checkbox
+                label={
+                  !form.isFixedEvent ? "Esta confirmado" : "Confirmar turno"
+                }
+                onChange={(event) =>
+                  onChange(event.target.checked, "isConfirmed")
+                }
+                checked={form.isConfirmed}
+              />
+            )}
+            {(isCreatingEvent || form.fixedEventId) && (
+              <Checkbox
+                label="Es turno fijo"
+                disabled={!!form.fixedEventId}
+                onChange={(event) =>
+                  onChange(event.target.checked, "isFixedEvent")
+                }
+                checked={form.isFixedEvent || !!form.fixedEventId}
+              />
+            )}
           </div>
           <div className="MODAL__Buttons">
-            {form.isFixedEvent && (
+            {isEditingEvent && (
               <button
                 className="MODAL__Button MODAL__Button--Delete"
-                onClick={handleDeleteEvent}
+                onClick={() => handleDeleteEvent(form.isFixedEvent)}
               >
-                Borrar Serie
+                {form.isFixedEvent ? "Borrar Serie" : "Borrar"}
               </button>
             )}
             {isEditingEvent && (
               <button
-                className="MODAL__Button MODAL__Button--Delete"
-                onClick={handleDeleteEvent}
+                className="MODAL__Button"
+                onClick={() => onCreateOtherEvent()}
               >
-                Borrar
+                Crear Otro
               </button>
             )}
             <button className="MODAL__Button" onClick={handleSaveEvent}>
@@ -281,16 +315,14 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
       </Dialog>
       <div className="HEADER">
         <h1 className="HEADER__Title">HD Padel - IVAN</h1>
-        <button
-          className="HEADER__Button"
-          onClick={onLogout}
-        >
+        <button className="HEADER__Button" onClick={onLogout}>
           Cerrar sesión
         </button>
       </div>
 
       <FullCalendar
         ref={calendarRef}
+        initialDate={initialDate ?? undefined}
         themeSystem="bootstrap5"
         allDaySlot={false}
         plugins={[timeGridPlugin, interactionPlugin]}
@@ -307,6 +339,7 @@ export const CalendarView = ({ onLogout }: CalendarViewProps) => {
           month: "Mes",
           list: "Lista",
         }}
+        datesSet={onDatesSet}
         weekends={true}
         events={events}
         eventContent={(event) => renderEventContent(event, isPhone)} // custom render function

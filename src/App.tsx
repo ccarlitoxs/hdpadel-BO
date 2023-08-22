@@ -4,19 +4,9 @@ import { Login } from "./components/Login/Login";
 import { Calendar } from "./components/Calendar/Calendar";
 
 function App() {
-
-
   const { user } = useContext(AuthContext);
 
-  return (
-    <>
-      {/* {!user ? (
-        <Login />
-      ) : ( */}
-        <Calendar />
-      {/* )} */}
-    </>
-  );
+  return <>{!user ? <Login /> : <Calendar />}</>;
 }
 
 export default App;
