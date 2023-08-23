@@ -69,8 +69,6 @@ export const AuthProvider = ({ children }: any) => {
         const userId = response.docs[0].id;
         const user = response.docs[0].data() as User;
 
-        console.log(user)
-
         if (user.has_create_pass) {
           if (user.password === "" && form.password !== "") {
             await setDoc(doc(firestore, "usuarios", userId), {
@@ -80,6 +78,7 @@ export const AuthProvider = ({ children }: any) => {
             });
             localStorage.setItem("user", JSON.stringify({ ...user, id: userId }));
             setUserLogged?.({ ...user, id: userId });
+            return;
           } else {
             alert("Debe crear una contraseña");
             return;
