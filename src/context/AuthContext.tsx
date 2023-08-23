@@ -17,6 +17,7 @@ type AuthContextProps = {
   checkUser: () => void;
   signIn: (form: { username: string; password: string }) => void;
   signOut: () => void;
+  loading: boolean;
 };
 
 export const AuthContext = createContext({} as AuthContextProps);
@@ -24,18 +25,20 @@ export const AuthContext = createContext({} as AuthContextProps);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const AuthProvider = ({ children }: any) => {
   const [userLogged, setUserLogged] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     checkUser();
-  }, [userLogged]);
+  }, []);
   
   const checkUser = async () => {
+    setLoading(true);
     const savedUser = JSON.parse(localStorage.getItem("user") ?? "null");
     try {
       const response = await getDocs(
         query(
           collection(firestore, "usuarios"),
-          where("username", "==", savedUser)
+          where("username", "==", savedUser.username)
         )
       );
 
@@ -48,6 +51,8 @@ export const AuthProvider = ({ children }: any) => {
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,9 +64,12 @@ export const AuthProvider = ({ children }: any) => {
           where("username", "==", form.username)
         )
       );
+
       if (response.docs.length !== 0) {
         const userId = response.docs[0].id;
         const user = response.docs[0].data() as User;
+
+        console.log(user)
 
         if (user.has_create_pass) {
           if (user.password === "" && form.password !== "") {
@@ -70,6 +78,8 @@ export const AuthProvider = ({ children }: any) => {
               password: form.password,
               has_create_pass: false,
             });
+            localStorage.setItem("user", JSON.stringify({ ...user, id: userId }));
+            setUserLogged?.({ ...user, id: userId });
           } else {
             alert("Debe crear una contraseña");
             return;
@@ -89,6 +99,8 @@ export const AuthProvider = ({ children }: any) => {
       }
     } catch (error) {
       console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -105,6 +117,7 @@ export const AuthProvider = ({ children }: any) => {
         checkUser,
         signIn,
         signOut,
+        loading,
       }}
     >
       {children}

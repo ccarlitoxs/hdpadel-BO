@@ -1,12 +1,24 @@
 import { useContext } from "react";
-import { AuthContext } from "./context/AuthContext";
+import { AuthContext, AuthProvider } from "./context/AuthContext";
 import { Login } from "./components/Login/Login";
 import { Calendar } from "./components/Calendar/Calendar";
 
-function App() {
-  const { user } = useContext(AuthContext);
+const AppState = () => {
+  const { user, loading } = useContext(AuthContext);
 
-  return <>{!user ? <Login /> : <Calendar />}</>;
+  return (
+    <>{loading ? <div>Cargando...</div> : !user ? <Login /> : <Calendar />}</>
+  );
+};
+
+function App() {
+  return (
+    <>
+      <AuthProvider>
+        <AppState />
+      </AuthProvider>
+    </>
+  );
 }
 
 export default App;
