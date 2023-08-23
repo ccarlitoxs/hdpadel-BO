@@ -7,7 +7,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { ModalContentContainer, StyledContainer } from "./CalendarView.styles";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useRef, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { Checkbox, Dialog, InputPresets } from "../UI";
 import DatePicker from "react-datepicker";
 
@@ -17,6 +17,7 @@ import { useForm } from "../../hooks/useForm";
 import { Event } from "../../types/app.types";
 import { useResponsiveMap } from "../../hooks/useResponsiveManager";
 import { DateTime } from "luxon";
+import { AuthContext } from "../../context/AuthContext";
 
 interface CalendarViewProps {
   onLogout?: () => void;
@@ -37,6 +38,7 @@ export const CalendarView = ({
   initialDate,
 }: CalendarViewProps) => {
   const { isDesktop, isPhone } = useResponsiveMap();
+  const { user } = useContext(AuthContext);
 
   const calendarRef = useRef<FullCalendar>(null);
 
@@ -314,7 +316,9 @@ export const CalendarView = ({
         </ModalContentContainer>
       </Dialog>
       <div className="HEADER">
-        <h1 className="HEADER__Title">HD Padel - IVAN</h1>
+        <h1 className="HEADER__Title">
+          HD Padel - {user?.username?.toUpperCase() ?? ""}
+        </h1>
         <button className="HEADER__Button" onClick={onLogout}>
           Cerrar sesión
         </button>
