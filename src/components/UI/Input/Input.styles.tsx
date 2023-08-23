@@ -12,8 +12,9 @@ export const Styles = styled.div`
 
     & .Label {
       font-size: 1.2rem;
-      color: ${MainColors.primary};
+      color: ${Status.error};
       margin-bottom: 0.5rem;
+      margin-left: 0.5rem;
     }
 
     & .Input {

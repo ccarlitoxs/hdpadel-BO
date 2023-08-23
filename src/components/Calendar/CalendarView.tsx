@@ -7,7 +7,7 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { ModalContentContainer, StyledContainer } from "./CalendarView.styles";
 import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { useContext, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { Checkbox, Dialog, InputPresets } from "../UI";
 import DatePicker from "react-datepicker";
 
@@ -49,6 +49,7 @@ export const CalendarView = ({
     isFixedEvent: false,
     isConfirmed: false,
     fixedEventId: "",
+    isClassesEvent: false,
   });
 
   const formErrorsInitialState = {
@@ -70,6 +71,19 @@ export const CalendarView = ({
   const [ShowModal, setShowModal] = useState<boolean>(false);
   const [isEditingEvent, setIsEditingEvent] = useState<boolean>(false);
   const [isCreatingEvent, setIsCreatingEvent] = useState<boolean>(false);
+  const [showWarningNextDay, setShowWarningNextDay] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (
+      dateRange.start &&
+      dateRange.end &&
+      DateTime.fromJSDate(dateRange.end).startOf("day") > DateTime.fromJSDate(dateRange.start).startOf("day")
+    ) {
+      setShowWarningNextDay(true);
+    } else {
+      setShowWarningNextDay(false);
+    }
+  }, [dateRange]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDateClick = (arg: DateClickArg) => {
@@ -78,6 +92,7 @@ export const CalendarView = ({
     setDateRange({ start: arg.date, end: endDate });
     setShowModal(true);
     setIsCreatingEvent(true);
+    setShowWarningNextDay(false);
   };
 
   const handleClickEvent = (arg: EventClickArg) => {
@@ -88,10 +103,12 @@ export const CalendarView = ({
       isFixedEvent: arg.event.extendedProps.isFixedEvent,
       isConfirmed: arg.event.extendedProps.status === "confirmed",
       fixedEventId: arg.event.extendedProps.fixedEventId,
+      isClassesEvent: arg.event.extendedProps.isClassesEvent,
     });
     setDateRange({ start: arg.event.start, end: arg.event.end });
     setIsEditingEvent(true);
     setShowModal(true);
+    setShowWarningNextDay(false);
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,25 +161,6 @@ export const CalendarView = ({
       return;
     }
 
-    if (
-      DateTime.fromJSDate(dateRange.end) <=
-        DateTime.fromJSDate(dateRange.start) ||
-      (DateTime.fromJSDate(dateRange.end).hasSame(
-        DateTime.fromJSDate(dateRange.start),
-        "hour"
-      ) &&
-        DateTime.fromJSDate(dateRange.end).hasSame(
-          DateTime.fromJSDate(dateRange.start),
-          "minute"
-        ))
-    ) {
-      setFormErrors({
-        startDate: true,
-        endDate: true,
-      });
-      return;
-    }
-
     await onSaveEvent?.({
       id: isEditingEvent ? form.id : undefined,
       title: form.owner,
@@ -172,6 +170,7 @@ export const CalendarView = ({
       status: form.isConfirmed ? "confirmed" : "pending",
       isFixedEvent: form.isFixedEvent,
       fixedEventId: form.fixedEventId,
+      isClassesEvent: form.isClassesEvent,
     });
 
     setFormErrors(formErrorsInitialState);
@@ -246,7 +245,12 @@ export const CalendarView = ({
           />
           <DatePicker
             selected={dateRange.end}
-            onChange={(date) => setDateRange({ ...dateRange, end: date })}
+            onChange={(date) => {
+              setDateRange({
+                ...dateRange,
+                end: date,
+              });
+            }}
             showTimeSelect
             showTimeSelectOnly
             timeIntervals={30}
@@ -266,6 +270,7 @@ export const CalendarView = ({
                   }`,
                 }}
                 className="MODAL__Input-Time"
+                label={showWarningNextDay ? "Dia siguiente" : ""}
               />
             }
           />
@@ -289,6 +294,15 @@ export const CalendarView = ({
                   onChange(event.target.checked, "isFixedEvent")
                 }
                 checked={form.isFixedEvent || !!form.fixedEventId}
+              />
+            )}
+            {isCreatingEvent && form.isFixedEvent && (
+              <Checkbox
+                label="Son clases"
+                onChange={(event) =>
+                  onChange(event.target.checked, "isClassesEvent")
+                }
+                checked={form.isClassesEvent}
               />
             )}
           </div>
@@ -365,6 +379,10 @@ export const CalendarView = ({
 const getStatusColor = (event: Event) => {
   if (event.status === "confirmed") {
     return "green";
+  }
+
+  if (event.isClassesEvent) {
+    return "blue";
   }
 
   if (event.isFixedEvent) {

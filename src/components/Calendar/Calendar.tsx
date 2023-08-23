@@ -105,6 +105,7 @@ export const Calendar = () => {
               end: endEventDate.toJSDate(),
               court: fixedEvent.court,
               isFixedEvent: true,
+              isClassesEvent: fixedEvent.isClassesEvent
             });
           }
         }
@@ -196,6 +197,7 @@ export const Calendar = () => {
             end_time: DateTime.fromJSDate(_event.end).toFormat("HH:mm"),
             court: _event.court,
             owner: _event.title,
+            isClassesEvent: !!_event.isClassesEvent
           });
         } catch (e) {
           console.error("Error adding document: ", e);

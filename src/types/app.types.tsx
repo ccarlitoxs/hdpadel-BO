@@ -10,6 +10,7 @@ export interface Event {
     isFixedEvent?: boolean;
     fixedEventId?: string;
     confirm_shift_id?: string;
+    isClassesEvent?: boolean;
 }
 
 export interface EventResponse {
@@ -29,6 +30,7 @@ export interface FixedEventResponse {
     end_time: string;
     court: string;
     owner: string;
+    isClassesEvent: boolean;
 }
 
 export interface User {
